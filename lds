@@ -425,19 +425,22 @@ for kernel in $(chroot "${dest_dir}" /bin/ls -1 /lib/modules/ 2>/dev/null); do
   fi
 done
 
+if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
+  grub_sysconfig="${dest_dir}/etc/sysconfig/grub"
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
+  grub_sysconfig="${dest_dir}/etc/default/grub"
+fi
+
 if [ "${network_legacy_ifnames}" = "yes" ]; then
   echo "Disabling predictable interface names"
-  if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${dest_dir}/etc/sysconfig/grub" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${dest_dir}/etc/sysconfig/grub" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${dest_dir}/etc/sysconfig/grub" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${dest_dir}/etc/sysconfig/grub" 2>/dev/null
-  elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${dest_dir}/etc/default/grub" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${dest_dir}/etc/default/grub" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${dest_dir}/etc/default/grub" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${dest_dir}/etc/default/grub" 2>/dev/null
-  fi
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
 fi
 
 echo -n "Generating GRUB configuration ... "
@@ -445,7 +448,7 @@ if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   chroot "${dest_dir}" /sbin/update-grub 1>/dev/null 2>&1
   result=$?
 elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
-  sed -i -e '/^GRUB_HIDDEN_TIMEOUT/s/^/#/g' "${dest_dir}/etc/default/grub" 1>/dev/null 2>&1
+  sed -i -e '/^GRUB_HIDDEN_TIMEOUT/s/^/#/g' "${grub_sysconfig}" 1>/dev/null 2>&1
   chroot "${dest_dir}" /usr/sbin/update-grub 1>/dev/null 2>&1
   result=$?
 fi
