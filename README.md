@@ -22,17 +22,30 @@ Requirements:
 * cryptsetup if you wish to encrypt your root device
 * lvm2 if you wish to use LVM
 
-Features:
+LDS supports installation on:
 
-* supports plain partitions or LUKS encrypted root device or root on LVM or root on LVM over LUKS encrypted device
+* plain partitions
+* LUKS encrypted root device
+* root device on LVM
+* root device on LVM over LUKS encrypted device
 * supports separate /boot and/or swap disks
-* can configure network on installed system with same IPv4 address and DNS servers as used by the host system
-* can create keyscript for automatic LUKS unlocking (if supported by chosen Linux distribution)
-* can disable predictable network interface names and stick with legacy names like eht0
-* can create user account on installed system and put SSH key on it
-* will configure hostname and time zone on installed system
+
+LDS will configure prepare installed system by:
+
+* configuring hostname and time zone
+* creating fstab and crypttab
+* creating initramfs image for installed kernel
+* creating GRUB bootloader configuration
+* installing GRUB bootloader
+
+Additionally LDS can do following on installed syste,:
+
+* configure network with same IPv4 address and DNS servers as used by the host system
+* create keyscript for automatic LUKS unlocking (if supported by chosen Linux distribution)
+* disable predictable network interface names and stick with legacy names like eht0
+* create user account and install SSH key on it
 
 # BIG FAT WARNING
 
-* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm all the data on selected devices will be permamently deleted. Be careful!
+* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm, all the data on selected devices will be permamently deleted. Be careful!
 * LDS will set root password on installed system to `Linux`. Be sure to change it right after first boot of your new system.
