@@ -499,6 +499,20 @@ if ! test -z "${user_login}"; then
   fi
 fi
 
+for key_type in "rsa" "ecdsa" "ed25519"; do
+  ssh_key_file="/etc/ssh/ssh_host_${key_type}_key"
+  if ! test -f "${dest_dir}/${ssh_key_file}"; then
+    echo -n "Generating ${key_type} SSH host key ... "
+    chroot "${dest_dir}" /usr/bin/ssh-keygen -t "${key_type}" -f "${ssh_key_file}" -N '' 1>/dev/null 2>&1
+    if [ "$?" -eq 0 ]; then
+      chmod 600 "${dest_dir}/${ssh_key_file}"
+      echo "OK"
+    else
+     echo "FAILED"
+    fi
+  fi
+done
+
 # umount /dev, /proc, /sys
 for d in sys run proc dev; do
   mountpoint -q "${dest_dir}/${d}" 1>/dev/null 2>/dev/null
