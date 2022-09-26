@@ -30,15 +30,16 @@ LDS supports installation on:
 * root device on LVM over LUKS encrypted device
 * supports separate /boot and/or swap disks
 
-LDS will configure prepare installed system by:
+LDS will prepare installed system by:
 
 * configuring hostname and time zone
 * creating fstab and crypttab
 * creating initramfs image for installed kernel
 * creating GRUB bootloader configuration
 * installing GRUB bootloader
+* generating SSH host keys if required
 
-Additionally LDS can do following on installed syste,:
+Additionally LDS can do following on installed system:
 
 * configure network with same IPv4 address and DNS servers as used by the host system
 * create keyscript for automatic LUKS unlocking (if supported by chosen Linux distribution)
