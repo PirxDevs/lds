@@ -17,21 +17,26 @@
 run_dir=$(realpath ${0})
 run_dir=$(dirname ${run_dir})
 
-if ! test -f "${run_dir}/lds.conf"; then
+if ! [ -f "${run_dir}/lds.conf" ]; then
   echo "Error: lds.conf not found"
   exit 1
 fi
 
 . ${run_dir}/lds.conf
 
-if test -z "${image_url}"; then
+if [ -z "${image_url}" ]; then
   echo "Error: image_url not configured"
+  exit 1
+fi
+
+if [ -z "${root_disk}" ] || [ "${root_disk}" = "${boot_disk}" ] || [ "${root_disk}" = "${swap_disk}" ]; then
+  echo "Error: invalid configuration"
   exit 1
 fi
 
 lds_index=$(mktemp -q -u -p /tmp 2>/dev/null)
 wget -q "${image_url}/lds.index" -O "${lds_index}"
-if ! test -s "${lds_index}"; then
+if ! [ -s "${lds_index}" ]; then
   echo "Error: no index found at ${image_url}"
   exit 1
 fi
@@ -49,14 +54,14 @@ while : ; do
     image=$(grep -E "^"${index}"\s+" "${lds_index}" | tr -s ' ' | cut -d ' ' -f3)
     image_description=$(grep -E "^"${index}"\s+" "${lds_index}" | tr -s ' ' | cut -d ' ' -f4-)
   fi
-  if ! test -z "${distro}" && ! test -z "${image}"; then
+  if ! [ -z "${distro}" ] && ! [ -z "${image}" ]; then
     rm -f "${lds_index}"
     break
   fi
 done
 
-if test -z "${distro}" || test -z "${root_disk}" || test -z "${luks}" || test -z "${lvm}"; then
-  echo "Error: invalid configuration"
+if [ -z "${distro}" ]; then
+  echo "Error: unknown distribution type"
   exit 1
 fi
 
@@ -65,20 +70,40 @@ if [ "${distro}" != "tld" ] && [ "${distro}" != "pld" ] && [ "${distro}" != "deb
   exit 1
 fi
 
-disk_list="${root_disk}"
-if ! test -z "${boot_disk}"; then
-  disk_list="${disk_list} ${boot_disk}"
+if [ "${luks}" != "yes" ]; then
+  luks="no"
 fi
-if ! test -z "${swap_disk}"; then
-  disk_list="${disk_list} ${swap_disk}"
+if [ "${luks_keyscript}" != "yes" ]; then
+  luks_keyscript="no"
 fi
+if [ "${lvm}" != "yes" ]; then
+  lvm="no"
+fi
+
 if [ "${luks}" == "yes" ] || [ "${lvm}" == "yes" ]; then
-  boot_disk_required="yes"
-  if test -z "${boot_partition_size}"; then
+  boot_device_required="yes"
+  if [ -z "${boot_partition_size}" ]; then
     boot_partition_size="256M"
   fi
 else
-  boot_disk_required="no"
+  boot_device_required="no"
+fi
+
+if [ -d "/sys/firmware/efi" ]; then
+  boot_type="uefi"
+  if [ -z "${efi_partition_size}" ]; then
+    efi_partition_size="128M"
+  fi
+else
+  boot_type="bios"
+fi
+
+disk_list="${root_disk}"
+if ! [ -z "${boot_disk}" ]; then
+  disk_list="${disk_list} ${boot_disk}"
+fi
+if ! [ -z "${swap_disk}" ]; then
+  disk_list="${disk_list} ${swap_disk}"
 fi
 
 echo
@@ -91,39 +116,27 @@ if [ "${disk_confirm}" != "YES" ]; then
   exit 1
 fi
 
-if test -d "/sys/firmware/efi"; then
-  boot_type="uefi"
-  if test -z "${efi_partition_size}"; then
-    efi_partition_size="128M"
-  fi
-else
-  boot_type="bios"
-fi
-
 sfdisk_config=$(mktemp -q -p /tmp 2>/dev/null)
-if ! test -z "${boot_disk}"; then
-  echo "Paritioning boot disk ${boot_disk}"
+if ! [ -z "${boot_disk}" ]; then
+  echo "Partitioning boot disk ${boot_disk}"
+  grub_device="${boot_disk}"
+  partition_number=1
+  cat > "${sfdisk_config}" <<EOF
+label: dos
+unit: sectors
+
+EOF
   if [ "${boot_type}" = "uefi" ]; then
-    cat > "${sfdisk_config}" <<EOF
-label: dos
-unit: sectors
-
-${boot_disk}1 : size=${efi_partition_size}, type=ef
-${boot_disk}2 : type=83, bootable
+    cat >> "${sfdisk_config}" <<EOF
+${boot_disk}${partition_number} : size=${efi_partition_size}, type=ef
 EOF
-    grub_device="${boot_disk}"
-    efi_device="${boot_disk}1"
-    boot_device="${boot_disk}2"
-  else
-    cat > "${sfdisk_config}" <<EOF
-label: dos
-unit: sectors
-
-${boot_disk}1 : type=83, bootable
-EOF
-    grub_device="${boot_disk}"
-    boot_device="${boot_disk}1"
+    efi_device="${boot_disk}${partition_number}"
+    partition_number=$((partition_number + 1))
   fi
+  cat >> "${sfdisk_config}" <<EOF
+${boot_disk}${partition_number} : type=83, bootable
+EOF
+  boot_device="${boot_disk}${partition_number}"
   sfdisk -q -w always --force ${boot_disk} < "${sfdisk_config}"
   result=$?
   rm -f "${sfdisk_config}"
@@ -133,92 +146,13 @@ EOF
   fi
 fi
 
-echo "Paritioning root disk ${root_disk}"
-if [ "${boot_disk_required}" = "yes" ]; then
-  if test -z "${boot_disk}"; then
-    if [ "${boot_type}" = "uefi" ]; then
-      cat > "${sfdisk_config}" <<EOF
-label: dos
-unit: sectors
-
-${root_disk}1 : size=${efi_partition_size}, type=ef
-${root_disk}2 : size=${boot_partition_size}, type=83, bootable
-${root_disk}3 : type=83
-EOF
-      grub_device="${root_disk}"
-      efi_device="${root_disk}1"
-      boot_device="${root_disk}2"
-       root_device="${root_disk}3"
-      luks_device="${root_disk}3"
-      lvm_device="${root_disk}3"
-    else
-      cat > "${sfdisk_config}" <<EOF
-label: dos
-unit: sectors
-
-${root_disk}1 : size=${boot_partition_size}, type=83, bootable
-${root_disk}2 : type=83
-EOF
-      grub_device="${root_disk}"
-      boot_device="${root_disk}1"
-      root_device="${root_disk}2"
-      luks_device="${root_disk}2"
-      lvm_device="${root_disk}2"
-    fi
-    sfdisk -q -w always --force ${root_disk} < "${sfdisk_config}"
-    result=$?
-    rm -f "${sfdisk_config}"
-    if [ "${result}" -ne 0 ]; then
-      echo "Failed"
-      exit 1
-    fi
-  fi
-else
-  if [ "${luks}" = "no" ] && [ "${lvm}" = "no" ]; then
-    if [ "${boot_type}" = "uefi" ]; then
-      cat > "${sfdisk_config}" <<EOF
-label: dos
-unit: sectors
-
-${boot_disk}1 : size=${efi_partition_size}, type=ef
-${root_disk}2 : type=83, bootable
-EOF
-      grub_device="${root_disk}"
-      efi_device="${root_disk}1"
-      boot_device="${root_disk}2"
-      root_device="${root_disk}2"
-    else
-      cat > "${sfdisk_config}" <<EOF
-label: dos
-unit: sectors
-
-${root_disk}1 : type=83, bootable
-EOF
-      grub_device="${root_disk}"
-      boot_device="${root_disk}1"
-      root_device="${root_disk}1"
-    fi
-    sfdisk -q -w always --force ${root_disk} < "${sfdisk_config}"
-    result=$?
-    rm -f "${sfdisk_config}"
-    if [ "${result}" -ne 0 ]; then
-      echo "Failed"
-      exit 1
-    fi
-  else
-    luks_device="${root_disk}"
-    lvm_device="${root_disk}"
-  fi
-fi
-
-
-if ! test -z "${swap_disk}"; then
-  echo "Paritioning swap disk ${swap_disk}"
+if ! [ -z "${swap_disk}" ]; then
+  echo "Partitioning swap disk ${swap_disk}"
   cat > "${sfdisk_config}" <<EOF
 label: dos
 unit: sectors
 
-${root_disk}1 : type=82
+${swap_disk}1 : type=82
 EOF
   swap_device="${swap_disk}1"
   sfdisk -q -w always --force ${swap_disk} < "${sfdisk_config}"
@@ -228,6 +162,70 @@ EOF
     echo "Failed"
     exit 1
   fi
+fi
+
+root_device_partitioning_required="no"
+if [ -z "${boot_disk}" ] && [ "${boot_type}" = "uefi" ]; then
+  root_device_partitioning_required="yes"
+fi
+if [ -z "${boot_disk}" ] && [ "${boot_device_required}" = "yes" ]; then
+  root_device_partitioning_required="yes"
+fi
+if [ -z "${swap_disk}" ] && ! [ -z "${swap_size}" ] && [ "${lvm}" = "no" ]; then
+  root_device_partitioning_required="yes"
+fi
+if [ "${luks}" = "no" ] && [ "${lvm}" = "no" ]; then
+  root_device_partitioning_required="yes"
+fi
+
+if [ "${root_device_partitioning_required}" = "yes" ]; then
+  echo "Partitioning root disk ${root_disk}"
+  partition_number=1
+  cat > "${sfdisk_config}" <<EOF
+label: dos
+unit: sectors
+
+EOF
+  if [ -z "${boot_disk}" ]; then
+    if [ "${boot_type}" = "uefi" ]; then
+      cat >> "${sfdisk_config}" <<EOF
+${root_disk}${partition_number} : size=${efi_partition_size}, type=ef
+EOF
+      efi_device="${root_disk}${partition_number}"
+      partition_number=$((partition_number + 1))
+    fi
+    if [ "${boot_device_required}" = "yes" ]; then
+      grub_device="${root_disk}"
+      cat >> "${sfdisk_config}" <<EOF
+${root_disk}${partition_number} : size=${boot_partition_size}, type=83, bootable
+EOF
+      boot_device="${root_disk}${partition_number}"
+      partition_number=$((partition_number + 1))
+    fi
+  fi
+  if [ -z "${swap_disk}" ] && ! [ -z "${swap_size}" ] && [ "${lvm}" = "no" ]; then
+    cat >> "${sfdisk_config}" <<EOF
+${root_disk}${partition_number} : size=${swap_size}, type=82
+EOF
+    swap_device="${root_disk}${partition_number}"
+    partition_number=$((partition_number + 1))
+  fi
+  cat >> "${sfdisk_config}" <<EOF
+${root_disk}${partition_number} : type=83
+EOF
+  root_device="${root_disk}${partition_number}"
+  luks_device="${root_disk}${partition_number}"
+  lvm_device="${root_disk}${partition_number}"
+  sfdisk -q -w always --force ${root_disk} < "${sfdisk_config}"
+  result=$?
+  rm -f "${sfdisk_config}"
+  if [ "${result}" -ne 0 ]; then
+    echo "Failed"
+    exit 1
+  fi
+else
+  luks_device="${root_disk}"
+  lvm_device="${root_disk}"
 fi
 
 if [ "${luks}" == "yes" ]; then
@@ -272,9 +270,9 @@ if [ "${lvm}" == "yes" ]; then
       exit 1
     fi
   fi
-  if test -z "${swap_disk}" && echo "${lvm_swap_size}" | grep -q -E "^[0-9.]+[KMG]$" 2>/dev/null; then
+  if [ -z "${swap_disk}" ] && echo "${swap_size}" | grep -q -E "^[0-9.]+[KMG]$" 2>/dev/null; then
     echo "Creating LVM LV for swap"
-    lvcreate -n swap -L ${lvm_swap_size} "${lvm_vg_name}"
+    lvcreate -n swap -L ${swap_size} "${lvm_vg_name}"
     if [ $? -ne 0 ]; then
       echo "Failed"
       exit 1
@@ -293,9 +291,25 @@ if [ "${lvm}" == "yes" ]; then
   root_device="/dev/${lvm_vg_name}/root"
 fi
 
-if [ "${boot_disk_required}" = "yes" ]; then
+if ! [ -z "${boot_device}" ]; then
   echo "Formatting ${boot_device} for /boot FS as ext4"
   mkfs.ext4 -q -F "${boot_device}"
+  if [ $? -ne 0 ]; then
+    echo "Failed"
+    exit 1
+  fi
+fi
+if ! [ -z "${efi_device}" ]; then
+  echo "Formatting ${efi_device} for /boot/efi FAT"
+  mkfs.vfat "${efi_device}"
+  if [ $? -ne 0 ]; then
+    echo "Failed"
+    exit 1
+  fi
+fi
+if ! [ -z "${swap_device}" ]; then
+  echo "Formatting ${swap_device} as swap space"
+  mkswap -f "${swap_device}"
   if [ $? -ne 0 ]; then
     echo "Failed"
     exit 1
@@ -308,26 +322,16 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-if ! test -z "${efi_device}"; then
-  echo "Formatting ${efi_device} for /boot/efi FAT"
-  mkfs.vfat "${efi_device}"
-fi
-
-if ! test -z "${swap_device}"; then
-  echo "Formatting ${swap_device} as swap space"
-  mkswap -f "${swap_device}"
-fi
-
 dest_dir=$(mktemp -q -p /tmp -d 2>/dev/null)
 
 mount "${root_device}" "${dest_dir}" 2>/dev/null
 
-if [ "${boot_disk_required}" == "yes" ]; then
+if [ "${boot_device_required}" == "yes" ]; then
   mkdir -p "${dest_dir}/boot" 2>/dev/null
   mount "${boot_device}" "${dest_dir}/boot" 2>/dev/null
 fi
 
-if ! test -z "${efi_device}"; then
+if ! [ -z "${efi_device}" ]; then
   mkdir -p "${dest_dir}/boot/efi" 2>/dev/null
   mount "${efi_device}" "${dest_dir}/boot/efi" 2>/dev/null
 fi
@@ -343,7 +347,7 @@ rm -f "${dest_dir}/etc/fstab"
 echo -e "proc\t/proc\tproc\tdefaults\t0\t0" >> "${dest_dir}/etc/fstab"
 mount | grep " on "${dest_dir} | while read m_dev j1 m_path j2 m_fs m_opts; do
   m_path=$(echo "${m_path}" | sed -e 's!'"${dest_dir}"'!!g;' 2>/dev/null)
-  if test -z "${m_path}"; then
+  if [ -z "${m_path}" ]; then
     m_path="/"
   fi
   if ! echo "${m_path}" | grep -q -E "^/(dev|proc|run|sys)$"; then
@@ -376,7 +380,7 @@ if [ "${luks}" == "yes" ]; then
   fi
   for luks_dev in $(blkid -o device -t TYPE="crypto_LUKS" 2>/dev/null); do
     luks_dev=$(basename "${luks_dev}" 2>/dev/null)
-    if ! test -d "/sys/block/${luks_dev}"; then
+    if ! [ -d "/sys/block/${luks_dev}" ]; then
       parent_dev=$(echo "${luks_dev}" | sed -r -e 's/[0-9]+$//' 2>/dev/null)
       dm_name=$(cat /sys/block/${parent_dev}/${luks_dev}/holders/dm-*/dm/name 2>/dev/null | head -n 1)
     else
@@ -399,7 +403,7 @@ EOF
 fi
 
 for d in dev proc run sys; do
-  if ! test -d "${dest_dir}/${d}"; then
+  if ! [ -d "${dest_dir}/${d}" ]; then
     mkdir -p "${dest_dir}/${d}" 1>/dev/null 2>&1
   fi
   mount /${d} "${dest_dir}/${d}" -o bind 1>/dev/null 2>&1
@@ -408,12 +412,12 @@ done
 for kernel in $(chroot "${dest_dir}" /bin/ls -1 /lib/modules/ 2>/dev/null); do
   echo -n "Generating initramfs image for kernel ${kernel} ... "
   if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
-    if test -x "${dest_dir}/usr/bin/dracut"; then
+    if [ -x "${dest_dir}/usr/bin/dracut" ]; then
       chroot "${dest_dir}" /sbin/dracut -vvv --force --hostonly /boot/initramfs-"${kernel}".img "${kernel}" 1>/dev/null 2>&1
       result=$?
     fi
   elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
-    if test -x "${dest_dir}/usr/sbin/mkinitramfs"; then
+    if [ -x "${dest_dir}/usr/sbin/mkinitramfs" ]; then
       chroot "${dest_dir}" /usr/sbin/mkinitramfs -v -o "/boot/initrd.img-${kernel}" "${kernel}" 1>/dev/null 2>&1
       result=$?
     fi
@@ -480,7 +484,7 @@ else
   echo "FAILED"
 fi
 
-if ! test -z "${user_login}"; then
+if ! [ -z "${user_login}" ]; then
   echo -n "Creating user ${user_login} ... "
   chroot "${dest_dir}" /usr/sbin/useradd -u 1001 -U -m -s /bin/bash ${user_login} 1>/dev/null 2>&1
   if [ "$?" -eq 0 ]; then
@@ -501,7 +505,7 @@ fi
 
 for key_type in "rsa" "ecdsa" "ed25519"; do
   ssh_key_file="/etc/ssh/ssh_host_${key_type}_key"
-  if ! test -f "${dest_dir}/${ssh_key_file}"; then
+  if ! [ -f "${dest_dir}/${ssh_key_file}" ]; then
     echo -n "Generating ${key_type} SSH host key ... "
     chroot "${dest_dir}" /usr/bin/ssh-keygen -t "${key_type}" -f "${ssh_key_file}" -N '' 1>/dev/null 2>&1
     if [ "$?" -eq 0 ]; then
@@ -521,10 +525,10 @@ for d in sys run proc dev; do
   fi
 done
 
-if test -z "${hostname}"; then
+if [ -z "${hostname}" ]; then
   hostname="${distro}"
 fi
-if ! test -z "${hostname}"; then
+if ! [ -z "${hostname}" ]; then
   echo "Setting system hostname to ${hostname}"
   if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
     sed -i -e '/^HOSTNAME=/s/=.*$/='"${hostname}"'/' "${dest_dir}/etc/sysconfig/network"
@@ -533,7 +537,7 @@ if ! test -z "${hostname}"; then
 fi
 
 if [ "${network_config}" = "yes" ]; then
-  if test -z "${network_device}"; then
+  if [ -z "${network_device}" ]; then
     network_device="eth0"
   fi
   echo "Configuring network device ${network_device}"
@@ -568,7 +572,7 @@ EOF
   fi
 fi
 
-if test -z "${timezone}"; then
+if [ -z "${timezone}" ]; then
   timezone="Etc/UTC"
 fi
 echo "Setting timezone to ${timezone}"
@@ -588,7 +592,7 @@ fi
 mkdir "${dest_dir}${home_path}/${user_login}/"{tmp,.ssh} 2>/dev/null
 chmod 700 "${dest_dir}${home_path}/${user_login}/"{tmp,.ssh} 2>/dev/null
 chmod 600 "${dest_dir}${home_path}/${user_login}/".bash* 2>/dev/null
-if ! test -z "${user_login}" && ! test -z "${user_ssh_key}"; then
+if ! [ -z "${user_login}" ] && ! [ -z "${user_ssh_key}" ]; then
   echo "Adding SSH key to account ${user_login}"
   cat "${run_dir}/${user_ssh_key}" > "${dest_dir}${home_path}/${user_login}/.ssh/authorized_keys"
   chmod 600 "${dest_dir}${home_path}/${user_login}/".ssh/authorized_keys 2>/dev/null
@@ -599,10 +603,10 @@ chown -R ${user_uid_gid} "${dest_dir}${home_path}/${user_login}/.ssh" 2>/dev/nul
 cp -f ${dest_dir}/etc/skel/.bash* ${dest_dir}/root/
 chmod 600 ${dest_dir}/root/.bash*
 
-if ! test -z "${efi_device}"; then
+if ! [ -z "${efi_device}" ]; then
   umount "${dest_dir}/boot/efi"
 fi
-if [ "${boot_disk_required}" == "yes" ]; then
+if [ "${boot_device_required}" == "yes" ]; then
   umount "${dest_dir}/boot"
 fi
 umount "${dest_dir}"
