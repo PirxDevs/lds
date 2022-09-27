@@ -46,7 +46,9 @@ Additionally LDS can do following on installed system:
 * disable predictable network interface names and stick with legacy names like eht0
 * create user account and install SSH key on it
 
-# BIG FAT WARNING
+# BIG FAT WARNINGS!
 
-* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm all data on selected devices will be permamently deleted. Be careful!
+* LDS has only some very basic tests against incorrect configuration. Be sure to double or even triple check your configuration before running LDS. Be careful!
+* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm all data on selected devices will be permamently deleted. Be very careful!
 * LDS will set root password on installed system to `Linux`. Be sure to change it right after first boot of your new system.
+* You are using LDS at your own risk! LDS authors are not responsible and cannot be responsible for any damage caused by use or misuse of LDS.
