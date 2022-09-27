@@ -48,5 +48,5 @@ Additionally LDS can do following on installed system:
 
 # BIG FAT WARNING
 
-* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm, all the data on selected devices will be permamently deleted. Be careful!
+* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm all data on selected devices will be permamently deleted. Be careful!
 * LDS will set root password on installed system to `Linux`. Be sure to change it right after first boot of your new system.
