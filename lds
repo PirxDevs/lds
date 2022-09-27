@@ -187,6 +187,7 @@ unit: sectors
 
 EOF
   if [ -z "${boot_disk}" ]; then
+    grub_device="${root_disk}"
     if [ "${boot_type}" = "uefi" ]; then
       cat >> "${sfdisk_config}" <<EOF
 ${root_disk}${partition_number} : size=${efi_partition_size}, type=ef
@@ -195,7 +196,6 @@ EOF
       partition_number=$((partition_number + 1))
     fi
     if [ "${boot_device_required}" = "yes" ]; then
-      grub_device="${root_disk}"
       cat >> "${sfdisk_config}" <<EOF
 ${root_disk}${partition_number} : size=${boot_partition_size}, type=83, bootable
 EOF
@@ -300,7 +300,7 @@ if ! [ -z "${boot_device}" ]; then
   fi
 fi
 if ! [ -z "${efi_device}" ]; then
-  echo "Formatting ${efi_device} for /boot/efi FAT"
+  echo "Formatting ${efi_device} for /boot/efi as FAT"
   mkfs.vfat "${efi_device}"
   if [ $? -ne 0 ]; then
     echo "Failed"
@@ -462,12 +462,12 @@ else
   echo "FAILED"
 fi
 
-echo -n "Installing GRUB on ${root_disk} ... "
+echo -n "Installing GRUB on ${grub_device} ... "
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
-  chroot "${dest_dir}" /sbin/grub-install "${root_disk}" 1>/dev/null 2>&1
+  chroot "${dest_dir}" /sbin/grub-install "${grub_device}" 1>/dev/null 2>&1
   result=$?
 elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
-  chroot "${dest_dir}" /usr/sbin/grub-install "${root_disk}" 1>/dev/null 2>&1
+  chroot "${dest_dir}" /usr/sbin/grub-install "${grub_device}" 1>/dev/null 2>&1
   result=$?
 fi
 if [ "${result}" -eq 0 ]; then
