@@ -441,10 +441,6 @@ if [ "${network_legacy_ifnames}" = "yes" ]; then
   sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
   sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
   sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
 fi
 
 echo -n "Generating GRUB configuration ... "
