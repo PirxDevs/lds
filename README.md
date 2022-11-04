@@ -4,7 +4,7 @@ This script was written for quick deployment of new Linux systems on various
 VPSs and VMs. All you need to do is to boot some rescue system on your VPS/VM,
 clone/upload LDS there, edit `lds.conf` and run `lds` script.
 
-Currently following systems are supported and avaiable:
+Currently following systems are supported and available:
 
 * [Debian GNU/Linux](https://www.debian.org/) 10 Buster (with SysVinit or systemd)
 * [Debian GNU/Linux](https://www.debian.org/) 11 Bullseye (with SysVinit or systemd)
@@ -43,12 +43,12 @@ Additionally LDS can do following on installed system:
 
 * configure network with same IPv4 address and DNS servers as used by the host system
 * create keyscript for automatic LUKS unlocking (if supported by chosen Linux distribution)
-* disable predictable network interface names and stick with legacy names like eht0
+* disable predictable network interface names and stick with legacy names like eth0
 * create user account and install SSH key on it
 
 # BIG FAT WARNINGS!
 
 * LDS has only some very basic tests against incorrect configuration. Be sure to double or even triple check your configuration before running LDS. Be careful!
-* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm all data on selected devices will be permamently deleted. Be very careful!
+* LDS will erase all contents of devices used for installation! It will ask for confirmation but once you confirm all data on selected devices will be permanently deleted. Be very careful!
 * LDS will set root password on installed system to `Linux`. Be sure to change it right after first boot of your new system.
 * You are using LDS at your own risk! LDS authors are not responsible and cannot be responsible for any damage caused by use or misuse of LDS.
