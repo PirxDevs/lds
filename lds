@@ -254,7 +254,7 @@ fi
 
 if [ "${luks}" == "yes" ]; then
   echo "Encrypting disk ${luks_device}"
-  echo "${luks_key}" | cryptsetup -qv luksFormat ${luks_device}
+  echo "${luks_key}" | cryptsetup -qv -M ${luks_type} -c ${luks_cipher} -s ${luks_key_size} -h ${luks_hash} luksFormat ${luks_device}
   if [ $? -ne 0 ]; then
     echo "Failed"
     exit 1
@@ -634,5 +634,5 @@ if [ "${lvm}" == "yes" ]; then
   vgchange -a n
 fi
 if [ "${luks}" == "yes" ]; then
-  cryptsetup luksClose ${luks_name}
+  cryptsetup -qv luksClose ${luks_name}
 fi
