@@ -29,6 +29,24 @@ if [ -z "${image_url}" ]; then
   exit 1
 fi
 
+if [ "${luks}" = "yes" ]; then
+  cryptsetup --help 1>/dev/nul 2>&1
+  if [ $? -ne 0 ]; then
+    echo "Error: luks encryption requested but cryptsetup command is not available"
+    exit 1
+  fi
+fi
+
+if [ "${lvm}" = "yes" ]; then
+  for cmd in "pvcreate" "vgcreate" "lvcreate"; do
+    "${cmd}" --help 1>/dev/nul 2>&1
+    if [ $? -ne 0 ]; then
+      echo "Error: LVM requested but ${cmd} command is not available"
+      exit 1
+    fi
+  done
+fi
+
 if [ -z "${root_disk}" ] || [ "${root_disk}" = "${boot_disk}" ] || [ "${root_disk}" = "${swap_disk}" ]; then
   echo "Error: invalid configuration"
   exit 1
