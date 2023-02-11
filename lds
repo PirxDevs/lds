@@ -82,8 +82,8 @@ fi
 
 if [ "${luks}" == "yes" ] || [ "${lvm}" == "yes" ]; then
   boot_device_required="yes"
-  if [ -z "${boot_partition_size}" ]; then
-    boot_partition_size="256M"
+  if [ -z "${boot_size}" ]; then
+    boot_size="256M"
   fi
 else
   boot_device_required="no"
@@ -91,8 +91,8 @@ fi
 
 if [ -d "/sys/firmware/efi" ]; then
   boot_type="uefi"
-  if [ -z "${efi_partition_size}" ]; then
-    efi_partition_size="128M"
+  if [ -z "${efi_size}" ]; then
+    efi_size="128M"
   fi
 else
   boot_type="bios"
@@ -128,7 +128,7 @@ unit: sectors
 EOF
   if [ "${boot_type}" = "uefi" ]; then
     cat >> "${sfdisk_config}" <<EOF
-${boot_disk}${partition_number} : size=${efi_partition_size}, type=ef
+${boot_disk}${partition_number} : size=${efi_size}, type=ef
 EOF
     efi_device="${boot_disk}${partition_number}"
     partition_number=$((partition_number + 1))
@@ -190,14 +190,14 @@ EOF
     grub_device="${root_disk}"
     if [ "${boot_type}" = "uefi" ]; then
       cat >> "${sfdisk_config}" <<EOF
-${root_disk}${partition_number} : size=${efi_partition_size}, type=ef
+${root_disk}${partition_number} : size=${efi_size}, type=ef
 EOF
       efi_device="${root_disk}${partition_number}"
       partition_number=$((partition_number + 1))
     fi
     if [ "${boot_device_required}" = "yes" ]; then
       cat >> "${sfdisk_config}" <<EOF
-${root_disk}${partition_number} : size=${boot_partition_size}, type=83, bootable
+${root_disk}${partition_number} : size=${boot_size}, type=83, bootable
 EOF
       boot_device="${root_disk}${partition_number}"
       partition_number=$((partition_number + 1))
@@ -210,9 +210,15 @@ EOF
     swap_device="${root_disk}${partition_number}"
     partition_number=$((partition_number + 1))
   fi
-  cat >> "${sfdisk_config}" <<EOF
+  if ! [ -z "${root_size}" ] && [ "${lvm}" = "no" ]; then
+    cat >> "${sfdisk_config}" <<EOF
+${root_disk}${partition_number} : size=${root_size}, type=83
+EOF
+  else
+    cat >> "${sfdisk_config}" <<EOF
 ${root_disk}${partition_number} : type=83
 EOF
+  fi
   root_device="${root_disk}${partition_number}"
   luks_device="${root_disk}${partition_number}"
   lvm_device="${root_disk}${partition_number}"
@@ -279,8 +285,8 @@ if [ "${lvm}" == "yes" ]; then
     fi
   fi
   echo "Creating LVM LV for root FS"
-  if echo "${lvm_root_size}" | grep -q -E "^[0-9.]+[KMG]$" 2>/dev/null; then
-    lvcreate -n root -L ${lvm_root_size} "${lvm_vg_name}"
+  if echo "${root_size}" | grep -q -E "^[0-9.]+[KMG]$" 2>/dev/null; then
+    lvcreate -n root -L ${root_size} "${lvm_vg_name}"
   else
     lvcreate -n root -l 100%free "${lvm_vg_name}"
   fi
