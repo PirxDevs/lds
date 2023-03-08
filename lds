@@ -30,7 +30,7 @@ if [ -z "${image_url}" ]; then
 fi
 
 if [ "${luks}" = "yes" ]; then
-  cryptsetup --help 1>/dev/nul 2>&1
+  cryptsetup --help 1>/dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo "Error: luks encryption requested but cryptsetup command is not available"
     exit 1
@@ -39,7 +39,7 @@ fi
 
 if [ "${lvm}" = "yes" ]; then
   for cmd in "pvcreate" "vgcreate" "lvcreate"; do
-    "${cmd}" --help 1>/dev/nul 2>&1
+    "${cmd}" --help 1>/dev/null 2>&1
     if [ $? -ne 0 ]; then
       echo "Error: LVM requested but ${cmd} command is not available"
       exit 1
