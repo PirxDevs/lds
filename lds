@@ -53,7 +53,7 @@ if [ -z "${root_disk}" ] || [ "${root_disk}" = "${boot_disk}" ] || [ "${root_dis
 fi
 
 lds_index=$(mktemp -q -u -p /tmp 2>/dev/null)
-wget -q "${image_url}/lds.index" -O "${lds_index}"
+wget -q --no-check-certificate "${image_url}/lds.index" -O "${lds_index}"
 if ! [ -s "${lds_index}" ]; then
   echo "Error: no index found at ${image_url}"
   exit 1
@@ -363,7 +363,7 @@ fi
 echo "Installing ${image_description}, please wait."
 
 cd "${dest_dir}"
-wget -q --show-progress --progress=bar:force "${image_url}/${image}" -O- | tar Jxf -
+wget -q --no-check-certificate --show-progress --progress=bar:force "${image_url}/${image}" -O- | tar Jxf -
 cd "${run_dir}"
 
 echo "Generating fstab"
