@@ -6,11 +6,15 @@ clone/upload LDS there, edit `lds.conf` and run `lds` script.
 
 Currently following systems are supported and available:
 
+* [AlmaLinux OS](https://almalinux.org/) 8
+* [AlmaLinux OS](https://almalinux.org/) 9
 * [Debian GNU/Linux](https://www.debian.org/) 10 Buster (with SysVinit or systemd)
 * [Debian GNU/Linux](https://www.debian.org/) 11 Bullseye (with SysVinit or systemd)
 * [Devuan Linux](https://devuan.org/) 3 Beowulf
 * [Devuan Linux](https://devuan.org/) 4 Chimaera
 * [PLD Linux](https://pld-linux.org/)
+* [Rocky Linux](https://rockylinux.org/) 8
+* [Rocky Linux](https://rockylinux.org/) 9
 * [TLD Linux](https://tld-linux.org/)
 * [Ubuntu Linux](https://ubuntu.com/) 18.04 Bionic
 * [Ubuntu Linux](https://ubuntu.com/) 20.04 Focal
