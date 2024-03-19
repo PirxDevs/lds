@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2022 Pirx Developers - https://pirx.dev/
+# Copyright (C) 2022-2024 Pirx Developers - https://pirx.dev/
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ if [ -z "${distro}" ]; then
   exit 1
 fi
 
-if [ "${distro}" != "tld" ] && [ "${distro}" != "pld" ] && [ "${distro}" != "debian" ] && [ "${distro}" != "devuan" ] && [ "${distro}" != "ubuntu" ]; then
+if [ "${distro}" != "tld" ] && [ "${distro}" != "pld" ] && [ "${distro}" != "debian" ] && [ "${distro}" != "devuan" ] && [ "${distro}" != "ubuntu" ] && [ "${distro}" != "alma" ] && [ "${distro}" != "rocky" ]; then
   echo "Error: unsupported distribution type '${distro}'"
   exit 1
 fi
@@ -435,9 +435,13 @@ done
 
 for kernel in $(chroot "${dest_dir}" /bin/ls -1 /lib/modules/ 2>/dev/null); do
   echo -n "Generating initramfs image for kernel ${kernel} ... "
-  if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
+  if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+    dracut_options="--force"
+    if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
+      dracut_options="${dracut_options} --hostonly"
+    fi
     if [ -x "${dest_dir}/usr/bin/dracut" ]; then
-      chroot "${dest_dir}" /sbin/dracut -vvv --force --hostonly /boot/initramfs-"${kernel}".img "${kernel}" 1>/dev/null 2>&1
+      chroot "${dest_dir}" /usr/bin/dracut ${dracut_options} /boot/initramfs-"${kernel}".img "${kernel}" 1>/dev/null 2>&1
       result=$?
     fi
   elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
@@ -455,21 +459,36 @@ done
 
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   grub_sysconfig="${dest_dir}/etc/sysconfig/grub"
-elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
   grub_sysconfig="${dest_dir}/etc/default/grub"
 fi
 
 if [ "${network_legacy_ifnames}" = "yes" ]; then
   echo "Disabling predictable interface names"
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
-  sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
+  if [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX="\s+/s/^GRUB_CMDLINE_LINUX="\s+/GRUB_CMDLINE_LINUX="/g;' "${grub_sysconfig}" 2>/dev/null
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX="/s/^GRUB_CMDLINE_LINUX="(.*)".*/GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
+  else
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
+    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
+  fi
 fi
 
 echo -n "Generating GRUB configuration ... "
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   chroot "${dest_dir}" /sbin/update-grub 1>/dev/null 2>&1
+  result=$?
+elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+  if [ "${boot_type}" = "uefi" ]; then
+    grub_config=$(chroot "${dest_dir}" readlink -m /etc/grub2-efi.cfg)
+  else
+    grub_config=$(chroot "${dest_dir}" readlink -m /etc/grub2.cfg)
+  fi
+  chroot "${dest_dir}" /usr/sbin/grub2-mkconfig -o ${grub_config} 1>/dev/null 2>&1
   result=$?
 elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
   sed -i -e '/^GRUB_HIDDEN_TIMEOUT/s/^/#/g' "${grub_sysconfig}" 1>/dev/null 2>&1
@@ -485,6 +504,9 @@ fi
 echo -n "Installing GRUB on ${grub_device} ... "
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   chroot "${dest_dir}" /sbin/grub-install "${grub_device}" 1>/dev/null 2>&1
+  result=$?
+elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+  chroot "${dest_dir}" /usr/sbin/grub2-install "${grub_device}" 1>/dev/null 2>&1
   result=$?
 elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
   chroot "${dest_dir}" /usr/sbin/grub-install "${grub_device}" 1>/dev/null 2>&1
@@ -509,7 +531,7 @@ if ! [ -z "${user_login}" ]; then
   chroot "${dest_dir}" /usr/sbin/useradd -u 1001 -U -m -s /bin/bash ${user_login} 1>/dev/null 2>&1
   if [ "$?" -eq 0 ]; then
     echo "OK"
-    if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
+    if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
       echo -n "Adding user ${user_login} to group 'wheel' ... "
       chroot "${dest_dir}" /usr/sbin/usermod -a -G wheel ${user_login} 1>/dev/null 2>&1
       if [ "$?" -eq 0 ]; then
@@ -563,7 +585,6 @@ if [ "${network_config}" = "yes" ]; then
   echo "Configuring network device ${network_device}"
   host_ip=$(ip -br -f inet addr | grep -v -E "^lo\s+" | awk -F " " '{print $3}')
   host_gw=$(ip route | grep -E '^default via' | awk -F " " '{print $3}')
-
   if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
     cat > "${dest_dir}/etc/sysconfig/interfaces/ifcfg-${network_device}" <<EOF
 DEVICE=${network_device}
@@ -571,6 +592,19 @@ ONBOOT=yes
 BOOTPROTO=none
 IPADDR=${host_ip}
 GATEWAY=${host_gw}
+EOF
+    grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
+  elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+    host_cidr=$(echo "${host_ip}" | sed -e 's!^.*/!!')
+    host_ip=${host_ip%/*}
+    cat > "${dest_dir}/etc/sysconfig/network-scripts/ifcfg-${network_device}" <<EOF
+DEVICE=${network_device}
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR=${host_ip}
+PREFIX=${host_cidr}
+GATEWAY=${host_gw}
+$(nsnum=1; for ns in $(grep -E "^nameserver" /etc/resolv.conf | sed -r -e 's/^nameserver\s+//g;'); do echo "DNS${nsnum}=${ns}"; nsnum=$((nsnum+1)); done;)
 EOF
     grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
   elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
@@ -605,7 +639,7 @@ ln -s "/usr/share/zoneinfo/${timezone}" "${dest_dir}/etc/localtime"
 
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   home_path="/home/users"
-elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
   home_path="/home"
 fi
 
