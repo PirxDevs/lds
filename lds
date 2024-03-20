@@ -126,7 +126,7 @@ fi
 
 echo
 echo "Warning!"
-echo "All contents of disk(s) ${disk_list} will erased!"
+echo "All contents of disk(s) ${disk_list} will be erased!"
 echo "Type YES to continue."
 read disk_confirm
 if [ "${disk_confirm}" != "YES" ]; then
