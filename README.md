@@ -23,9 +23,11 @@ Currently following systems are supported and available:
 
 Requirements:
 
+* bash for running the script
 * sfdisk for patitioning
 * cryptsetup if you wish to encrypt your root device
 * lvm2 if you wish to use LVM
+* wget for downloading system images
 
 LDS supports installation on:
 
@@ -46,7 +48,7 @@ LDS will prepare installed system by:
 
 Additionally LDS can do following on installed system:
 
-* configure network with same IPv4 address and DNS servers as used by the host system
+* configure selected network interface with same IPv4 address and DNS servers as used by the host system
 * create keyscript for automatic LUKS unlocking (if supported by chosen Linux distribution)
 * disable predictable network interface names and stick with legacy names like eth0
 * create user account and install SSH key on it
