@@ -433,6 +433,18 @@ for d in dev proc run sys; do
   mount /${d} "${dest_dir}/${d}" -o bind 1>/dev/null 2>&1
 done
 
+if test -f "${dest_dir}/etc/machine-id"; then
+  echo -n "Generating machine ID ... "
+  rm -f "${dest_dir}/etc/machine-id"
+  chroot "${dest_dir}" /usr/bin/systemd-machine-id-setup 1>/dev/null 2>&1
+  result=$?
+  if [ "${result}" -eq 0 ]; then
+    echo "OK"
+  else
+   echo "FAILED"
+  fi
+fi
+
 for kernel in $(chroot "${dest_dir}" /bin/ls -1 /lib/modules/ 2>/dev/null); do
   echo -n "Generating initramfs image for kernel ${kernel} ... "
   if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
