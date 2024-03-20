@@ -626,6 +626,7 @@ method=ignore
 
 [proxy]
 EOF
+    chmod 600 "${dest_dir}/etc/NetworkManager/system-connections/${network_device}.nmconnection" 2>/dev/null
     grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf" 2>/dev/null
   elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
     host_cidr=$(echo "${host_ip}" | sed -e 's!^.*/!!' 2>/dev/null)
