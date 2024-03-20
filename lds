@@ -607,16 +607,24 @@ GATEWAY=${host_gw}
 EOF
     grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
   elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
-    host_cidr=$(echo "${host_ip}" | sed -e 's!^.*/!!')
-    host_ip=${host_ip%/*}
-    cat > "${dest_dir}/etc/sysconfig/network-scripts/ifcfg-${network_device}" <<EOF
-DEVICE=${network_device}
-ONBOOT=yes
-BOOTPROTO=none
-IPADDR=${host_ip}
-PREFIX=${host_cidr}
-GATEWAY=${host_gw}
-$(nsnum=1; for ns in $(grep -E "^nameserver" /etc/resolv.conf | sed -r -e 's/^nameserver\s+//g;'); do echo "DNS${nsnum}=${ns}"; nsnum=$((nsnum+1)); done;)
+    cat > "${dest_dir}/etc/NetworkManager/system-connections/${network_device}.nmconnection" <<EOF
+[connection]
+id=${network_device}
+uuid=$(uuidgen)
+type=ethernet
+interface-name=${network_device}
+
+[ethernet]
+
+[ipv4]
+address1=${host_ip},${host_gw}
+dns=$(grep -E "^nameserver" /etc/resolv.conf | sed -r -e 's/^nameserver\s+//g;' | tr '\n' ';')
+method=manual
+
+[ipv6]
+method=ignore
+
+[proxy]
 EOF
     grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
   elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
