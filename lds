@@ -83,7 +83,7 @@ if [ -z "${distro}" ]; then
   exit 1
 fi
 
-if [ "${distro}" != "tld" ] && [ "${distro}" != "pld" ] && [ "${distro}" != "debian" ] && [ "${distro}" != "devuan" ] && [ "${distro}" != "ubuntu" ] && [ "${distro}" != "alma" ] && [ "${distro}" != "rocky" ]; then
+if [ "${distro}" != "tld" ] && [ "${distro}" != "pld" ] && [ "${distro}" != "debian" ] && [ "${distro}" != "devuan" ] && [ "${distro}" != "ubuntu" ] && [ "${distro}" != "alma" ] && [ "${distro}" != "rocky" ] && [ "${distro}" != "fedora" ]; then
   echo "Error: unsupported distribution type '${distro}'"
   exit 1
 fi
@@ -447,7 +447,7 @@ fi
 
 for kernel in $(chroot "${dest_dir}" /bin/ls -1 /lib/modules/ 2>/dev/null); do
   echo -n "Generating initramfs image for kernel ${kernel} ... "
-  if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+  if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
     dracut_options="--force"
     if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
       dracut_options="${dracut_options} --hostonly"
@@ -471,13 +471,13 @@ done
 
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   grub_sysconfig="${dest_dir}/etc/sysconfig/grub"
-elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
   grub_sysconfig="${dest_dir}/etc/default/grub"
 fi
 
 if [ "${network_legacy_ifnames}" = "yes" ]; then
   echo "Disabling predictable interface names"
-  if [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+  if [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
     sed -i -r -e '/^GRUB_CMDLINE_LINUX="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
     sed -i -r -e '/^GRUB_CMDLINE_LINUX="\s+/s/^GRUB_CMDLINE_LINUX="\s+/GRUB_CMDLINE_LINUX="/g;' "${grub_sysconfig}" 2>/dev/null
     sed -i -r -e '/^GRUB_CMDLINE_LINUX="/s/^GRUB_CMDLINE_LINUX="(.*)".*/GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
@@ -494,7 +494,7 @@ echo -n "Generating GRUB configuration ... "
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   chroot "${dest_dir}" /sbin/update-grub 1>/dev/null 2>&1
   result=$?
-elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
   if [ "${boot_type}" = "uefi" ]; then
     grub_config=$(chroot "${dest_dir}" readlink -m /etc/grub2-efi.cfg)
   else
@@ -517,7 +517,7 @@ echo -n "Installing GRUB on ${grub_device} ... "
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   chroot "${dest_dir}" /sbin/grub-install "${grub_device}" 1>/dev/null 2>&1
   result=$?
-elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
   chroot "${dest_dir}" /usr/sbin/grub2-install "${grub_device}" 1>/dev/null 2>&1
   result=$?
 elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
@@ -543,7 +543,7 @@ if ! [ -z "${user_login}" ]; then
   chroot "${dest_dir}" /usr/sbin/useradd -u 1001 -U -m -s /bin/bash ${user_login} 1>/dev/null 2>&1
   if [ "$?" -eq 0 ]; then
     echo "OK"
-    if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+    if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
       echo -n "Adding user ${user_login} to group 'wheel' ... "
       chroot "${dest_dir}" /usr/sbin/usermod -a -G wheel ${user_login} 1>/dev/null 2>&1
       if [ "$?" -eq 0 ]; then
@@ -606,7 +606,7 @@ IPADDR=${host_ip}
 GATEWAY=${host_gw}
 EOF
     grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
-  elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+  elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
     host_cidr=$(echo "${host_ip}" | sed -e 's!^.*/!!')
     host_ip=${host_ip%/*}
     cat > "${dest_dir}/etc/sysconfig/network-scripts/ifcfg-${network_device}" <<EOF
@@ -651,7 +651,7 @@ ln -s "/usr/share/zoneinfo/${timezone}" "${dest_dir}/etc/localtime"
 
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   home_path="/home/users"
-elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ]; then
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
   home_path="/home"
 fi
 
