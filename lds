@@ -367,7 +367,7 @@ wget -q --no-check-certificate --show-progress --progress=bar:force "${image_url
 cd "${run_dir}"
 
 echo "Generating fstab"
-rm -f "${dest_dir}/etc/fstab"
+rm -f "${dest_dir}/etc/fstab" 2>/dev/null
 echo -e "proc\t/proc\tproc\tdefaults\t0\t0" >> "${dest_dir}/etc/fstab"
 mount | grep " on "${dest_dir} | while read m_dev j1 m_path j2 m_fs m_opts; do
   m_path=$(echo "${m_path}" | sed -e 's!'"${dest_dir}"'!!g;' 2>/dev/null)
@@ -387,7 +387,7 @@ if [ "${luks}" == "yes" ]; then
     luks_keyscript="no"
   fi
   echo "Generating crypttab"
-  rm -f "${dest_dir}/etc/crypttab"
+  rm -f "${dest_dir}/etc/crypttab" 2>/dev/null
 
   luks_uuid=""
   luks_options=""
@@ -573,7 +573,7 @@ done
 
 # umount /dev, /proc, /sys
 for d in sys run proc dev; do
-  mountpoint -q "${dest_dir}/${d}" 1>/dev/null 2>/dev/null
+  mountpoint -q "${dest_dir}/${d}" 1>/dev/null 2>&1
   if [ $? -eq 0 ]; then
     umount "${dest_dir}/${d}" 1>/dev/null 2>&1
   fi
@@ -585,7 +585,7 @@ fi
 if ! [ -z "${hostname}" ]; then
   echo "Setting system hostname to ${hostname}"
   if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
-    sed -i -e '/^HOSTNAME=/s/=.*$/='"${hostname}"'/' "${dest_dir}/etc/sysconfig/network"
+    sed -i -e '/^HOSTNAME=/s/=.*$/='"${hostname}"'/' "${dest_dir}/etc/sysconfig/network" 2>/dev/null
   fi
   echo "${hostname}" > "${dest_dir}/etc/hostname"
 fi
@@ -595,8 +595,8 @@ if [ "${network_config}" = "yes" ]; then
     network_device="eth0"
   fi
   echo "Configuring network device ${network_device}"
-  host_ip=$(ip -br -f inet addr | grep -v -E "^lo\s+" | awk -F " " '{print $3}')
-  host_gw=$(ip route | grep -E '^default via' | awk -F " " '{print $3}')
+  host_ip=$(ip -br -f inet addr 2>/dev/null | grep -v -E "^lo\s+" 2>/dev/null | awk -F " " '{print $3}' 2>/dev/null)
+  host_gw=$(ip route 2>/dev/null | grep -E '^default via' 2>/dev/null | awk -F " " '{print $3}' 2>/dev/null)
   if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
     cat > "${dest_dir}/etc/sysconfig/interfaces/ifcfg-${network_device}" <<EOF
 DEVICE=${network_device}
@@ -618,7 +618,7 @@ interface-name=${network_device}
 
 [ipv4]
 address1=${host_ip},${host_gw}
-dns=$(grep -E "^nameserver" /etc/resolv.conf | sed -r -e 's/^nameserver\s+//g;' | tr '\n' ';')
+dns=$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | sed -r -e 's/^nameserver\s+//g;' | tr '\n' ';' 2>/dev/null)
 method=manual
 
 [ipv6]
@@ -626,9 +626,9 @@ method=ignore
 
 [proxy]
 EOF
-    grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
+    grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf" 2>/dev/null
   elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
-    host_cidr=$(echo "${host_ip}" | sed -e 's!^.*/!!')
+    host_cidr=$(echo "${host_ip}" | sed -e 's!^.*/!!' 2>/dev/null)
     host_ip=${host_ip%/*}
     mask_value=$(( 0xffffffff ^ ((1 << (32 - ${host_cidr})) - 1) ))
     host_netmask="$(( (mask_value >> 24) & 0xff )).$(( (mask_value >> 16) & 0xff )).$(( (mask_value >> 8) & 0xff )).$(( mask_value & 0xff ))"
@@ -641,7 +641,7 @@ iface ${network_device} inet static
   address ${host_ip}
   netmask ${host_netmask}
   gateway ${host_gw}
-$(grep -E "^nameserver" /etc/resolv.conf | sed -e 's/^nameserver/  dns-nameserver/g;')
+$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | sed -e 's/^nameserver/  dns-nameserver/g;' 2>/dev/null)
 EOF
   fi
 fi
@@ -651,11 +651,11 @@ if [ -z "${timezone}" ]; then
 fi
 echo "Setting timezone to ${timezone}"
 timezone_esc=$(echo "${timezone}" | sed -e 's/\//\\\//g;' 2>/dev/null)
-rm -f "${dest_dir}/etc/localtime"
+rm -f "${dest_dir}/etc/localtime" 2>/dev/null
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
-  sed -i -e '/^TIMEZONE=/s/=.*$/="'"${timezone_esc}"'"/g;' "${dest_dir}/etc/sysconfig/timezone"
+  sed -i -e '/^TIMEZONE=/s/=.*$/="'"${timezone_esc}"'"/g;' "${dest_dir}/etc/sysconfig/timezone" 2>/dev/null
 fi
-ln -s "/usr/share/zoneinfo/${timezone}" "${dest_dir}/etc/localtime"
+ln -s "/usr/share/zoneinfo/${timezone}" "${dest_dir}/etc/localtime" 2>/dev/null
 
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   home_path="/home/users"
@@ -668,14 +668,14 @@ chmod 700 "${dest_dir}${home_path}/${user_login}/"{tmp,.ssh} 2>/dev/null
 chmod 600 "${dest_dir}${home_path}/${user_login}/".bash* 2>/dev/null
 if ! [ -z "${user_login}" ] && ! [ -z "${user_ssh_key}" ]; then
   echo "Adding SSH key to account ${user_login}"
-  cat "${run_dir}/${user_ssh_key}" > "${dest_dir}${home_path}/${user_login}/.ssh/authorized_keys"
+  cat "${run_dir}/${user_ssh_key}" 2>/dev/null > "${dest_dir}${home_path}/${user_login}/.ssh/authorized_keys"
   chmod 600 "${dest_dir}${home_path}/${user_login}/".ssh/authorized_keys 2>/dev/null
 fi
-user_uid_gid=$(grep -E "^"${user_login} ${dest_dir}/etc/passwd | cut -d ":" -f 3,4)
+user_uid_gid=$(grep -E "^"${user_login} ${dest_dir}/etc/passwd 2>/dev/null | cut -d ":" -f 3,4 2>/dev/null)
 chown -R ${user_uid_gid} "${dest_dir}${home_path}/${user_login}/.ssh" 2>/dev/null
 
-cp -f ${dest_dir}/etc/skel/.bash* ${dest_dir}/root/
-chmod 600 ${dest_dir}/root/.bash*
+cp -f ${dest_dir}/etc/skel/.bash* ${dest_dir}/root/ 2>/dev/null
+chmod 600 ${dest_dir}/root/.bash* 2>/dev/null
 
 if ! [ -z "${efi_device}" ]; then
   umount "${dest_dir}/boot/efi"
