@@ -13,6 +13,7 @@ Currently following systems are supported and available:
 * [Devuan Linux](https://devuan.org/) 3 Beowulf
 * [Devuan Linux](https://devuan.org/) 4 Chimaera
 * [PLD Linux](https://pld-linux.org/)
+* [Fedora Server](https://fedoraproject.org/server/) 39
 * [Rocky Linux](https://rockylinux.org/) 8
 * [Rocky Linux](https://rockylinux.org/) 9
 * [TLD Linux](https://tld-linux.org/)
