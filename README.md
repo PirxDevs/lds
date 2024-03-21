@@ -10,6 +10,7 @@ Currently following systems are supported and available:
 * [AlmaLinux OS](https://almalinux.org/) 9
 * [Debian GNU/Linux](https://www.debian.org/) 10 Buster (with SysVinit or systemd)
 * [Debian GNU/Linux](https://www.debian.org/) 11 Bullseye (with SysVinit or systemd)
+* [Debian GNU/Linux](https://www.debian.org/) 12 Bookworm (with SysVinit or systemd)
 * [Devuan Linux](https://devuan.org/) 3 Beowulf
 * [Devuan Linux](https://devuan.org/) 4 Chimaera
 * [PLD Linux](https://pld-linux.org/)
