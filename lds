@@ -59,22 +59,50 @@ if ! [ -s "${lds_index}" ]; then
   exit 1
 fi
 
+menu_index=""
+index=""
 while : ; do
   echo
-  cat "${lds_index}" | while read index index_distro index_image index_description; do
-    echo "${index}: ${index_description}"
+  if [ -z "${menu_index}" ]; then
+    regex="^[0-9]+\s+"
+  else
+    regex="^"${menu_index}"-[0-9]+\s+"
+  fi
+  grep -E "${regex}" "${lds_index}" | while read index index_distro index_image index_description; do
+    echo "${index#[0-9]*-}: ${index_description}"
   done
+  if ! [ -z "${menu_index}" ]; then
+    echo "0: Return to main menu"
+  fi
   echo
   echo "Select system to install:"
   read index
-  if echo "${index}" | grep -q -E "^[0-9a-zA-Z]"; then
-    distro=$(grep -E "^"${index}"\s+" "${lds_index}" | tr -s ' ' | cut -d ' ' -f2)
-    image=$(grep -E "^"${index}"\s+" "${lds_index}" | tr -s ' ' | cut -d ' ' -f3)
-    image_description=$(grep -E "^"${index}"\s+" "${lds_index}" | tr -s ' ' | cut -d ' ' -f4-)
+  if [ -z "${menu_index}" ]; then
+    regex="^"${index}"\s+"
+  else
+    regex="^"${menu_index}"-"${index}"\s+"
   fi
-  if ! [ -z "${distro}" ] && ! [ -z "${image}" ]; then
-    rm -f "${lds_index}"
-    break
+  selected=$(grep -E "${regex}" "${lds_index}")
+  if [ -z "${selected}" ]; then
+    if [ "${index}" = "0" ]; then
+      menu_index=""
+    fi
+    index=""
+    continue
+  fi
+  distro=$(echo "${selected}" | tr -s ' ' | cut -d ' ' -f2)
+  if [ "${distro}" != "-" ]; then
+    image=$(echo "${selected}" | tr -s ' ' | cut -d ' ' -f3)
+    image_description=$(echo "${selected}" | tr -s ' ' | cut -d ' ' -f4-)
+    if ! [ -z "${distro}" ] && ! [ -z "${image}" ] && ! [ -z "${image_description}" ]; then
+      rm -f "${lds_index}"
+      break
+    fi
+  fi
+  if [ -z "${menu_index}" ]; then
+    menu_index="${index}"
+    index=""
+    continue
   fi
 done
 
@@ -433,7 +461,7 @@ for d in dev proc run sys; do
   mount /${d} "${dest_dir}/${d}" -o bind 1>/dev/null 2>&1
 done
 
-if test -f "${dest_dir}/etc/machine-id"; then
+if [ -f "${dest_dir}/etc/machine-id" ]; then
   echo -n "Generating machine ID ... "
   rm -f "${dest_dir}/etc/machine-id"
   chroot "${dest_dir}" /usr/bin/systemd-machine-id-setup 1>/dev/null 2>&1
