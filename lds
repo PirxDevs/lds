@@ -631,7 +631,7 @@ BOOTPROTO=none
 IPADDR=${host_ip}
 GATEWAY=${host_gw}
 EOF
-    grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf"
+    grep -E "^nameserver" /etc/resolv.conf > "${dest_dir}/etc/resolv.conf" 2>/dev/null
   elif [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
     cat > "${dest_dir}/etc/NetworkManager/system-connections/${network_device}.nmconnection" <<EOF
 [connection]
@@ -644,7 +644,7 @@ interface-name=${network_device}
 
 [ipv4]
 address1=${host_ip},${host_gw}
-dns=$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | sed -r -e 's/^nameserver\s+//g;' | tr '\n' ';' 2>/dev/null)
+dns=$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | sed -r -e 's/^nameserver\s+//g;' 2>/dev/null | tr '\n' ';' 2>/dev/null)
 method=manual
 
 [ipv6]
