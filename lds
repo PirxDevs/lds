@@ -683,6 +683,8 @@ timezone_esc=$(echo "${timezone}" | sed -e 's/\//\\\//g;' 2>/dev/null)
 rm -f "${dest_dir}/etc/localtime" 2>/dev/null
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   sed -i -e '/^TIMEZONE=/s/=.*$/="'"${timezone_esc}"'"/g;' "${dest_dir}/etc/sysconfig/timezone" 2>/dev/null
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
+  echo "${timezone}" > "${dest_dir}/etc/timezone"
 fi
 ln -s "/usr/share/zoneinfo/${timezone}" "${dest_dir}/etc/localtime" 2>/dev/null
 
