@@ -499,23 +499,21 @@ done
 
 if [ "${distro}" = "tld" ] || [ "${distro}" = "pld" ]; then
   grub_sysconfig="${dest_dir}/etc/sysconfig/grub"
-elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ] || [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
+  grub_var="GRUB_CMDLINE_LINUX_DEFAULT"
+elif [ "${distro}" = "debian" ] || [ "${distro}" = "devuan" ] || [ "${distro}" = "ubuntu" ]; then
   grub_sysconfig="${dest_dir}/etc/default/grub"
+  grub_var="GRUB_CMDLINE_LINUX_DEFAULT"
+elif [ "${distro}" = "almalinux" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
+  grub_sysconfig="${dest_dir}/etc/default/grub"
+  grub_var="GRUB_CMDLINE_LINUX"
 fi
 
 if [ "${network_legacy_ifnames}" = "yes" ]; then
   echo "Disabling predictable interface names"
-  if [ "${distro}" = "alma" ] || [ "${distro}" = "rocky" ] || [ "${distro}" = "fedora" ]; then
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX="\s+/s/^GRUB_CMDLINE_LINUX="\s+/GRUB_CMDLINE_LINUX="/g;' "${grub_sysconfig}" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX="/s/^GRUB_CMDLINE_LINUX="(.*)".*/GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
-  else
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
-    sed -i -r -e '/^GRUB_CMDLINE_LINUX_DEFAULT=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
-  fi
+  sed -i -r -e '/^'${grub_var}'="/s/(net\.ifnames=[01]|biosdevname=[01])//g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^'${grub_var}'="\s+/s/^GRUB_CMDLINE_LINUX_DEFAULT="\s+/GRUB_CMDLINE_LINUX_DEFAULT="/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^'${grub_var}'="/s/^GRUB_CMDLINE_LINUX_DEFAULT="(.*)".*/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames=0 biosdevname=0 \1"/g;' "${grub_sysconfig}" 2>/dev/null
+  sed -i -r -e '/^'${grub_var}'=".*\s+"/s/\s+"/"/g;' "${grub_sysconfig}" 2>/dev/null
 fi
 
 echo -n "Generating GRUB configuration ... "
