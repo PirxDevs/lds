@@ -676,7 +676,7 @@ EOF
 fi
 
 if [ -z "${timezone}" ]; then
-  timezone="Etc/UTC"
+  timezone="UTC"
 fi
 echo "Setting timezone to ${timezone}"
 timezone_esc=$(echo "${timezone}" | sed -e 's/\//\\\//g;' 2>/dev/null)
