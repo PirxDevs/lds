@@ -644,7 +644,7 @@ interface-name=${network_device}
 
 [ipv4]
 address1=${host_ip},${host_gw}
-dns=$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | sed -r -e 's/^nameserver\s+//g;' 2>/dev/null | tr '\n' ';' 2>/dev/null)
+dns=$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | head -n 3 2>/dev/null | sed -r -e 's/^nameserver\s+//g; s/\s+/ /g;' 2>/dev/null | tr '\n' ';' 2>/dev/null)
 method=manual
 
 [ipv6]
@@ -668,7 +668,7 @@ iface ${network_device} inet static
   address ${host_ip}
   netmask ${host_netmask}
   gateway ${host_gw}
-$(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | sed -e 's/^nameserver/  dns-nameserver/g;' 2>/dev/null)
+  dns-nameservers $(grep -E "^nameserver" /etc/resolv.conf 2>/dev/null | head -n 3 2>/dev/null | sed -r -e 's/^nameserver\s+//g' 2>/dev/null | tr '\n' ' ' 2>/dev/null | sed -r -e 's/\s+/ /g; s/\s+$//;')
 EOF
   fi
 fi
